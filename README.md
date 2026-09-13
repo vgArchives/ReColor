@@ -82,8 +82,8 @@ Requires the .NET SDK. The project references the game's own assemblies, so set 
 `ReColor.csproj` to your ReStory install path if it differs from the default.
 
 ```
-dotnet build                            # Debug   - verbose per-action logging
-dotnet build -c Release                 # Release - development logging compiled out
-dotnet build -c Release -p:Loader=Melon # the MelonLoader build of the same source
+dotnet build                              # Debug   - verbose per-action logging
+dotnet build -c Release                   # Release - development logging compiled out
+dotnet build -c Release -p:Loader=BepInEx # the BepInEx build of the same source
 ```
 

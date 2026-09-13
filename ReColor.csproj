@@ -17,8 +17,11 @@
     <Managed>$(GameDir)\Restory_Data\Managed</Managed>
   </PropertyGroup>
 
-  <!-- Mod loader flavor: default builds the BepInEx plugin, -p:Loader=Melon the MelonLoader mod. -->
-  <PropertyGroup Condition="'$(Loader)' != 'Melon'">
+  <PropertyGroup>
+    <Loader Condition="'$(Loader)' == ''">Melon</Loader>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Loader)' == 'BepInEx'">
     <LoaderName>BepInEx</LoaderName>
     <DeployDir>$(GameDir)\BepInEx\plugins\$(AssemblyName)\</DeployDir>
   </PropertyGroup>
@@ -32,17 +35,11 @@
     <IntermediateOutputPath>obj\$(Configuration)\Melon\</IntermediateOutputPath>
   </PropertyGroup>
 
-  <ItemGroup Condition="'$(Loader)' != 'Melon'">
+  <ItemGroup Condition="'$(Loader)' == 'BepInEx'">
     <Reference Include="$(PkgBepInEx_BaseLib)\lib\net35\BepInEx.dll" Private="false" />
     <Reference Include="$(PkgHarmonyX)\lib\net35\0Harmony.dll" Private="false" />
   </ItemGroup>
 
-  <!-- Restored for both flavors, so switching flavors can't leave the restore state behind. NuGet only
-       downloads these; they are referenced by path like every other assembly here, so their .NET Standard
-       facades never end up fighting Unity's own mscorlib. 0.6.6 is the oldest supported loader and has no
-       transitive deps; the API used here is unchanged in 0.7.x, so the same DLL loads under both. BepInEx
-       comes from its own feed (see NuGet.config) so the plugin builds without BepInEx installed; 5.4.21 is
-       API-identical to the 5.4.23.x the README asks for. -->
   <ItemGroup>
     <PackageReference Include="LavaGang.MelonLoader" Version="0.6.6"
                       GeneratePathProperty="true" ExcludeAssets="all" />
@@ -57,8 +54,10 @@
     <Reference Include="$(PkgHarmonyX)\lib\net35\0Harmony.dll" Private="false" />
   </ItemGroup>
 
-  <!-- The board is the game's own painting tool panel cloned at runtime, so the mod ships no art of its
-       own and needs no embedded resources. -->
+  <ItemGroup>
+    <EmbeddedResource Include="art\ReColor_Icon.png" LogicalName="ReColor.ReColor_Icon.png" />
+  </ItemGroup>
+
   <ItemGroup>
     <Reference Include="$(Managed)\mscorlib.dll" Private="false" />
     <Reference Include="$(Managed)\netstandard.dll" Private="false" />
@@ -68,9 +67,13 @@
     <Reference Include="$(Managed)\Unity.TextMeshPro.dll" Private="false" />
     <!-- WorkSurface and the rug switcher, plus the painting tool panel the board is cloned from. -->
     <Reference Include="$(Managed)\Restory.Assembly.dll" Private="false" />
+    <!-- The game's data assets derive from Odin's SerializedScriptableObject, so building against
+         PcAppInfo needs Odin on the reference path even though the mod calls none of it. -->
+    <Reference Include="$(Managed)\Sirenix.Serialization.dll" Private="false" />
+    <Reference Include="$(Managed)\Sirenix.OdinInspector.Attributes.dll" Private="false" />
+    <Reference Include="$(Managed)\Sirenix.Utilities.dll" Private="false" />
   </ItemGroup>
 
-  <!-- Automatic deploy the build in the correct path. -->
   <Target Name="Deploy" AfterTargets="Build">
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(DeployDir)" />
     <Message Importance="high" Condition="'$(Configuration)' == 'Debug'"
