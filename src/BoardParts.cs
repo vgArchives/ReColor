@@ -35,10 +35,6 @@ internal static class BoardParts
 
     private const float ItemLabelPadding = 24f;
 
-    private const string SettingsTabName = "UnDoButton";
-    private const string PresetsTabName = "ReDoButton";
-    private const string ResetTabName = "ResetButton";
-
     private const int BoardSortingOrder = 500;
 
     internal const float RowWidth = 624f;
@@ -51,7 +47,7 @@ internal static class BoardParts
 
     internal const int RowsPerColumn = 3;
 
-    private static readonly TabLayout[] TabLayouts = TabLayout.Defaults();
+    private static readonly TabFace[] TabFaces = TabFace.Defaults();
     private static readonly Color SelectedTabTint = new Color(0.70f, 0.66f, 0.62f, 1f);
     internal static readonly LayoutSettings Layout = LayoutSettings.Defaults();
 
@@ -78,8 +74,12 @@ internal static class BoardParts
         Reset
     }
 
-    private struct TabLayout
+    private struct TabFace
     {
+        internal string SourceName;
+        internal Func<string> Caption;
+        internal int Order;
+
         internal float IconSize;
 
         internal float IconX;
@@ -90,21 +90,24 @@ internal static class BoardParts
 
         internal float FontSize;
 
-        internal static TabLayout[] Defaults()
+        internal static TabFace[] Defaults()
         {
             return new[]
             {
-                DefineFace(44f, -24f, 7f, -24f, 67f),
-                DefineFace(46f, -24f, 9f, -28f, 69f),
-                DefineFace(28f, -27f, 18f, -29f, 70f)
+                DefineFace("UnDoButton", () => Strings.PaintTab, 0, 44f, -24f, 7f, -24f, 67f),
+                DefineFace("ReDoButton", () => Strings.PresetTab, 1, 46f, -24f, 9f, -28f, 69f),
+                DefineFace("ResetButton", () => Strings.ResetTab, 2, 28f, -27f, 18f, -29f, 70f)
             };
         }
 
-        private static TabLayout DefineFace(float iconSize, float iconX, float iconTop, float textX,
-            float textCentre)
+        private static TabFace DefineFace(string sourceName, Func<string> caption, int order,
+            float iconSize, float iconX, float iconTop, float textX, float textCentre)
         {
-            return new TabLayout
+            return new TabFace
             {
+                SourceName = sourceName,
+                Caption = caption,
+                Order = order,
                 IconSize = iconSize,
                 IconX = iconX,
                 IconTop = iconTop,
@@ -261,9 +264,9 @@ internal static class BoardParts
 
                 if (button != null)
                 {
-                    int captured = index;
+                    int presetIndex = index;
                     button.onClick.RemoveAllListeners();
-                    button.onClick.AddListener(() => onClicked(captured));
+                    button.onClick.AddListener(() => onClicked(presetIndex));
                 }
 
                 SetPresetLabel(cell, labelOf(index));
@@ -291,10 +294,10 @@ internal static class BoardParts
             if (dropdown == null)
                 return null;
 
-            var built = new DropdownRow(row, dropdown, FindCaption(row));
-            built.SetSlot(slot, slots);
+            var dropdownRow = new DropdownRow(row, dropdown, FindCaption(row));
+            dropdownRow.SetSlot(slot, slots);
 
-            return built;
+            return dropdownRow;
         }
 
         private static GameObject Spawn(GameObject template, string name, Transform parent)
@@ -321,6 +324,14 @@ internal static class BoardParts
         to.color = from.color;
         to.enableVertexGradient = from.enableVertexGradient;
         to.colorGradient = from.colorGradient;
+    }
+
+    internal static void CopyTextFont(TMP_Text from, TMP_Text to)
+    {
+        if (from == null || to == null)
+            return;
+
+        to.font = from.font;
     }
 
     internal static void SetTextColor(TMP_Text text, Color color)
@@ -355,9 +366,9 @@ internal static class BoardParts
     internal static float RowsTop(int rowsInColumn)
     {
         float top = BandBottom();
-        float used = rowsInColumn <= 0 ? 0f : rowsInColumn * RowPitch() - Layout.RowGap;
+        float usedHeight = rowsInColumn <= 0 ? 0f : rowsInColumn * RowPitch() - Layout.RowGap;
 
-        return top - (top - Layout.ContentBottom - used) * 0.5f;
+        return top - (top - Layout.ContentBottom - usedHeight) * 0.5f;
     }
 
     internal static bool TryClonePanel(out Panel panel)
@@ -410,6 +421,67 @@ internal static class BoardParts
         Log.Debug("Board parts: painting panel cloned and stripped.");
 
         return true;
+    }
+
+    internal static void WireTab(this Panel panel, TabSlot slot, Action onClicked)
+    {
+        if (!Tabs.TryGetValue(slot, out GameObject button))
+            return;
+
+        Button click = button.GetComponent<Button>();
+
+        if (click == null)
+            return;
+
+        click.onClick.RemoveAllListeners();
+        click.onClick.AddListener(() => onClicked());
+
+        SetCaption(button, TabCaption(slot));
+    }
+
+    internal static void WireClose(this Panel panel, Action onClosed)
+    {
+        Transform close = panel.Board == null ? null : panel.Board.Find(CloseButtonName);
+        Button click = close == null ? null : close.GetComponent<Button>();
+
+        if (click == null)
+            return;
+
+        click.onClick.RemoveAllListeners();
+        click.onClick.AddListener(() => onClosed());
+    }
+
+    internal static void HighlightTab(TabSlot slot)
+    {
+        foreach (KeyValuePair<TabSlot, GameObject> tab in Tabs)
+        {
+            if (tab.Key == TabSlot.Reset)
+                continue;
+
+            Transform face = tab.Value.transform.Find(ButtonFaceName);
+            Image wood = face == null ? null : face.GetComponent<Image>();
+
+            if (wood != null)
+            {
+                wood.color = tab.Key == slot ? SelectedTabTint : Color.white;
+            }
+        }
+    }
+
+    internal static void FillPresetVisibility(Func<int, bool> isVisible)
+    {
+        for (int index = 0; index < Cells.Count; index++)
+        {
+            Cells[index].Root.SetActive(isVisible(index));
+        }
+    }
+
+    internal static void RetranslateTabs()
+    {
+        foreach (KeyValuePair<TabSlot, GameObject> tab in Tabs)
+        {
+            SetCaption(tab.Value, TabCaption(tab.Key));
+        }
     }
 
     private static void Reveal(GameObject clone, Transform board)
@@ -523,7 +595,7 @@ internal static class BoardParts
 
     private static void StripForeignScripts(GameObject root)
     {
-        int removed = 0;
+        int removedCount = 0;
 
         foreach (MonoBehaviour script in root.GetComponentsInChildren<MonoBehaviour>(true))
         {
@@ -534,10 +606,10 @@ internal static class BoardParts
                 continue;
 
             Object.DestroyImmediate(script);
-            removed++;
+            removedCount++;
         }
 
-        Log.Debug($"Board parts: stripped {removed} script(s) from the clone.");
+        Log.Debug($"Board parts: stripped {removedCount} script(s) from the clone.");
     }
 
     private static TMP_Dropdown ConvertDropdown(GameObject row)
@@ -629,9 +701,10 @@ internal static class BoardParts
             return;
         }
 
-        Register(TabSlot.Settings, Child(strip, SettingsTabName));
-        Register(TabSlot.Presets, Child(strip, PresetsTabName));
-        Register(TabSlot.Reset, Child(strip, ResetTabName));
+        for (int slot = 0; slot < TabFaces.Length; slot++)
+        {
+            Register((TabSlot)slot, Child(strip, TabFaces[slot].SourceName));
+        }
 
         GiveResetALabel();
         ArrangeTabs();
@@ -642,11 +715,11 @@ internal static class BoardParts
     {
         foreach (KeyValuePair<TabSlot, GameObject> tab in Tabs)
         {
-            LayOutTab(tab.Value, TabLayouts[(int)tab.Key]);
+            LayOutTab(tab.Value, TabFaces[(int)tab.Key]);
         }
     }
 
-    private static void LayOutTab(GameObject button, TabLayout layout)
+    private static void LayOutTab(GameObject button, TabFace tab)
     {
         Transform face = button.transform.Find(ButtonFaceName);
 
@@ -657,8 +730,8 @@ internal static class BoardParts
         {
             icon.anchorMin = icon.anchorMax = new Vector2(0.5f, 1f);
             icon.pivot = new Vector2(0.5f, 0.5f);
-            icon.sizeDelta = new Vector2(layout.IconSize, layout.IconSize);
-            icon.anchoredPosition = new Vector2(layout.IconX, -(layout.IconTop + layout.IconSize * 0.5f));
+            icon.sizeDelta = new Vector2(tab.IconSize, tab.IconSize);
+            icon.anchoredPosition = new Vector2(tab.IconX, -(tab.IconTop + tab.IconSize * 0.5f));
         }
 
         TMP_Text caption = FindCaption(button);
@@ -671,10 +744,10 @@ internal static class BoardParts
         captionRect.anchorMin = captionRect.anchorMax = new Vector2(0.5f, 0.5f);
         captionRect.pivot = new Vector2(0.5f, 0.5f);
         captionRect.sizeDelta = new Vector2(TabVisibleWidth, TabTextHeight);
-        captionRect.anchoredPosition = new Vector2(layout.TextX, TabHeight * 0.5f - layout.TextCentre);
+        captionRect.anchoredPosition = new Vector2(tab.TextX, TabHeight * 0.5f - tab.TextCentre);
 
         caption.enableAutoSizing = false;
-        caption.fontSize = layout.FontSize;
+        caption.fontSize = tab.FontSize;
         caption.alignment = TextAlignmentOptions.Center;
         caption.textWrappingMode = TextWrappingModes.NoWrap;
     }
@@ -691,9 +764,10 @@ internal static class BoardParts
         heights.Sort();
         heights.Reverse();
 
-        MoveTab(TabSlot.Settings, heights, 0);
-        MoveTab(TabSlot.Presets, heights, 1);
-        MoveTab(TabSlot.Reset, heights, 2);
+        for (int slot = 0; slot < TabFaces.Length; slot++)
+        {
+            MoveTab((TabSlot)slot, heights, TabFaces[slot].Order);
+        }
     }
 
     private static void MoveTab(TabSlot slot, List<float> heights, int heightIndex)
@@ -738,65 +812,9 @@ internal static class BoardParts
         }
     }
 
-    internal static void WireTab(this Panel panel, TabSlot slot, Action onClicked)
-    {
-        if (!Tabs.TryGetValue(slot, out GameObject button))
-            return;
-
-        Button click = button.GetComponent<Button>();
-
-        if (click == null)
-            return;
-
-        click.onClick.RemoveAllListeners();
-        click.onClick.AddListener(() => onClicked());
-
-        SetCaption(button, TabCaption(slot));
-    }
-
-    internal static void WireClose(this Panel panel, Action onClosed)
-    {
-        Transform close = panel.Board == null ? null : panel.Board.Find(CloseButtonName);
-        Button click = close == null ? null : close.GetComponent<Button>();
-
-        if (click == null)
-            return;
-
-        click.onClick.RemoveAllListeners();
-        click.onClick.AddListener(() => onClosed());
-    }
-
-    internal static void HighlightTab(TabSlot slot)
-    {
-        foreach (KeyValuePair<TabSlot, GameObject> tab in Tabs)
-        {
-            if (tab.Key == TabSlot.Reset)
-                continue;
-
-            Transform face = tab.Value.transform.Find(ButtonFaceName);
-            Image wood = face == null ? null : face.GetComponent<Image>();
-
-            if (wood != null)
-            {
-                wood.color = tab.Key == slot ? SelectedTabTint : Color.white;
-            }
-        }
-    }
-
-    internal static void FillPresetVisibility(Func<int, bool> isVisible)
-    {
-        for (int index = 0; index < Cells.Count; index++)
-        {
-            Cells[index].Root.SetActive(isVisible(index));
-        }
-    }
-
     private static string TabCaption(TabSlot slot)
     {
-        if (slot == TabSlot.Settings)
-            return "PAINT";
-
-        return slot == TabSlot.Presets ? "PRESET" : "RESET";
+        return TabFaces[(int)slot].Caption();
     }
 
     private static void SetPresetLabel(GameObject cell, string text)
@@ -887,6 +905,7 @@ internal sealed class DropdownRow
     internal void SetCaptionLook(TMP_Text source)
     {
         BoardParts.CopyTextLook(source, _caption);
+        BoardParts.CopyTextFont(source, _dropdown.itemText);
     }
 
     internal void SetOptions(IEnumerable<string> labels)

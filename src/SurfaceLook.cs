@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using Restory.Gameplay.Competitions;
+using Restory.Gameplay.SaveLoad.Services;
 using Restory.Gameplay.Workplace;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -51,6 +52,9 @@ internal static class SurfaceLook
 
     private static float _nextPaintTime;
 
+    private static bool _hasUnsavedLook;
+    private static bool _isLookWriteDue;
+
     private static RugMode _rugMode = RugMode.Normal;
 
     internal static int SurfaceCount => Targets.Count;
@@ -70,7 +74,7 @@ internal static class SurfaceLook
 
     private sealed class FloatKnob
     {
-        internal readonly string Label;
+        internal readonly Func<string> Label;
         internal readonly string Property;
         internal readonly int PropertyId;
         internal readonly float Min;
@@ -78,7 +82,7 @@ internal static class SurfaceLook
 
         internal float Original;
 
-        internal FloatKnob(string label, string property, float min, float max)
+        internal FloatKnob(Func<string> label, string property, float min, float max)
         {
             Label = label;
             Property = property;
@@ -90,13 +94,13 @@ internal static class SurfaceLook
 
     private sealed class ColorKnob
     {
-        internal readonly string Label;
+        internal readonly Func<string> Label;
         internal readonly string Property;
         internal readonly int PropertyId;
 
         internal Color Original;
 
-        internal ColorKnob(string label, string property)
+        internal ColorKnob(Func<string> label, string property)
         {
             Label = label;
             Property = property;
@@ -116,7 +120,6 @@ internal static class SurfaceLook
 
         internal bool LinksColors;
 
-        internal string[] ModeLabels;
         internal Texture OriginalBase;
         internal BaseMode Mode;
         internal int ModeIndex;
@@ -145,6 +148,7 @@ internal static class SurfaceLook
             return;
 
         EnsureOriginals(surfaceIndex);
+        MarkLookChanged();
 
         LookTarget target = Targets[surfaceIndex];
 
@@ -203,7 +207,18 @@ internal static class SurfaceLook
 
     internal static string[] ModeLabels(int surfaceIndex)
     {
-        return IsSurface(surfaceIndex) ? Targets[surfaceIndex].ModeLabels : new string[0];
+        if (!IsSurface(surfaceIndex))
+            return new string[0];
+
+        BaseMode[] modes = Targets[surfaceIndex].Modes;
+        var labels = new string[modes.Length];
+
+        for (int index = 0; index < modes.Length; index++)
+        {
+            labels[index] = ModeLabel(modes[index]);
+        }
+
+        return labels;
     }
 
     internal static int ModeIndexOf(int surfaceIndex)
@@ -226,6 +241,7 @@ internal static class SurfaceLook
         target.ModeIndex = modeIndex;
         target.Mode = target.Modes[modeIndex];
 
+        MarkLookChanged();
         ApplyBase(target);
     }
 
@@ -249,12 +265,12 @@ internal static class SurfaceLook
         if (targetIndex <= 0)
         {
             if (target.LinksColors)
-                return "Colour";
+                return Strings.Colour;
 
-            return target.BaseColor != null ? target.BaseColor.Label : "Base paint";
+            return target.BaseColor != null ? target.BaseColor.Label() : Strings.BasePaint;
         }
 
-        return targetIndex <= target.Colors.Length ? target.Colors[targetIndex - 1].Label : string.Empty;
+        return targetIndex <= target.Colors.Length ? target.Colors[targetIndex - 1].Label() : string.Empty;
     }
 
     internal static Color ColorTarget(int surfaceIndex, int targetIndex)
@@ -279,6 +295,7 @@ internal static class SurfaceLook
             return;
 
         EnsureOriginals(surfaceIndex);
+        MarkLookChanged();
 
         LookTarget target = Targets[surfaceIndex];
 
@@ -322,9 +339,9 @@ internal static class SurfaceLook
             return string.Empty;
 
         if (knobIndex != NoKnob)
-            return target.Floats[knobIndex].Label;
+            return target.Floats[knobIndex].Label();
 
-        return sliderIndex == 0 ? "Brightness" : "Contrast";
+        return sliderIndex == 0 ? Strings.Brightness : Strings.Contrast;
     }
 
     internal static Vector2 SliderRange(int surfaceIndex, int sliderIndex)
@@ -355,6 +372,7 @@ internal static class SurfaceLook
             return;
 
         EnsureOriginals(surfaceIndex);
+        MarkLookChanged();
 
         if (knobIndex != NoKnob)
         {
@@ -380,6 +398,7 @@ internal static class SurfaceLook
             return;
 
         EnsureOriginals(surfaceIndex);
+        MarkLookChanged();
 
         LookTarget target = Targets[surfaceIndex];
 
@@ -443,7 +462,7 @@ internal static class SurfaceLook
 
         if (isWrongLength)
         {
-            Log.Warning("ReColor: a preset does not fit this surface; it was not applied.");
+            Log.Warning($"ReColor: a look does not fit \"{SurfaceName(surfaceIndex)}\"; it was not applied.");
             return;
         }
 
@@ -467,6 +486,55 @@ internal static class SurfaceLook
     internal static void Tick()
     {
         RepaintDirtyTargets();
+        WriteLookIfDue();
+    }
+
+    private static void WriteLookIfDue()
+    {
+        if (!_isLookWriteDue)
+            return;
+
+        _isLookWriteDue = false;
+
+        CaptureLook();
+
+        if (!_hasUnsavedLook)
+            return;
+
+        LookMemory.Write();
+
+        _hasUnsavedLook = false;
+    }
+
+    private static void MarkLookChanged()
+    {
+        _hasUnsavedLook = true;
+    }
+
+    private static void CaptureLook()
+    {
+        if (!_hasUnsavedLook)
+            return;
+
+        for (int surface = 0; surface < Targets.Count; surface++)
+        {
+            LookMemory.Remember(Targets[surface].Name, CaptureState(surface));
+        }
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(GameplaySaveLoadService), nameof(GameplaySaveLoadService.SaveProgressAsync))]
+    private static void SaveLookWithProgress()
+    {
+        _isLookWriteDue = true;
+    }
+
+    private static string ModeLabel(BaseMode mode)
+    {
+        if (mode == BaseMode.Original)
+            return Strings.Original;
+
+        return mode == BaseMode.Greyscale ? Strings.Greyscale : Strings.Flat;
     }
 
     private static bool TryReadSlider(int surfaceIndex, int sliderIndex, out LookTarget target, out int knobIndex)
@@ -517,6 +585,13 @@ internal static class SurfaceLook
 
         target.HasOriginals = true;
 
+        ReadOriginals(target);
+
+        Log.Debug($"ReColor: \"{target.Name}\" originals taken at first change.");
+    }
+
+    private static void ReadOriginals(LookTarget target)
+    {
         if (target.BaseColor != null)
         {
             target.BaseColor.Original = target.Material.GetColor(target.BaseColor.PropertyId);
@@ -533,8 +608,6 @@ internal static class SurfaceLook
         }
 
         target.OriginalBase = target.Material.GetTexture(BaseTextureId);
-
-        Log.Debug($"ReColor: \"{target.Name}\" originals taken at first change.");
     }
 
     [HarmonyPostfix]
@@ -565,7 +638,7 @@ internal static class SurfaceLook
             Name = TableSurfaceName,
             Material = FindSceneMaterial(TableMaterialName),
             Modes = new[] { BaseMode.Original, BaseMode.Flat },
-            BaseColor = new ColorKnob("Colour", "_Color"),
+            BaseColor = new ColorKnob(() => Strings.Colour, "_Color"),
             Colors = new ColorKnob[0],
             Floats = TableFloats()
         });
@@ -575,7 +648,7 @@ internal static class SurfaceLook
             Name = NormalRugSurfaceName,
             Material = InstanceOf(rugRenderer, 0),
             Modes = new[] { BaseMode.Original, BaseMode.Greyscale, BaseMode.Flat },
-            BaseColor = new ColorKnob("Colour", "_Color"),
+            BaseColor = new ColorKnob(() => Strings.Colour, "_Color"),
             Colors = new ColorKnob[0],
             Floats = RugFloats()
         });
@@ -590,15 +663,35 @@ internal static class SurfaceLook
             Floats = TournamentFloats()
         });
 
+        RestoreRememberedLook();
         ApplyRugMode();
 
         Log.Debug($"ReColor bound to {Targets.Count} material(s).");
+    }
+
+    private static void RestoreRememberedLook()
+    {
+        int restoredCount = 0;
+
+        for (int surface = 0; surface < Targets.Count; surface++)
+        {
+            if (!LookMemory.TryRecall(Targets[surface].Name, out float[] state))
+                continue;
+
+            ApplyState(surface, state);
+            restoredCount++;
+        }
+
+        _hasUnsavedLook = false;
+
+        Log.Debug($"ReColor: restored a stored look onto {restoredCount} of {Targets.Count} surface(s).");
     }
 
     [HarmonyPostfix]
     [HarmonyPatch(typeof(WorkSurface), nameof(WorkSurface.Dispose))]
     private static void UnbindFromBench()
     {
+        CaptureLook();
         Unbind();
     }
 
@@ -668,29 +761,7 @@ internal static class SurfaceLook
             return;
         }
 
-        if (target.BaseColor != null)
-        {
-            target.BaseColor.Original = target.Material.GetColor(target.BaseColor.PropertyId);
-        }
-
-        foreach (ColorKnob knob in target.Colors)
-        {
-            knob.Original = target.Material.GetColor(knob.PropertyId);
-        }
-
-        foreach (FloatKnob knob in target.Floats)
-        {
-            knob.Original = target.Material.GetFloat(knob.PropertyId);
-        }
-
-        target.ModeLabels = new string[target.Modes.Length];
-
-        for (int index = 0; index < target.Modes.Length; index++)
-        {
-            target.ModeLabels[index] = target.Modes[index].ToString();
-        }
-
-        target.OriginalBase = target.Material.GetTexture(BaseTextureId);
+        ReadOriginals(target);
 
         Targets.Add(target);
     }
@@ -793,9 +864,9 @@ internal static class SurfaceLook
     {
         return new[]
         {
-            new FloatKnob("Emission power", "_Emission_Power", 0f, 10f),
-            new FloatKnob("Specular", "_Specular", 0f, 1f),
-            new FloatKnob("Metallic", "_Metallic", 0f, 1f)
+            new FloatKnob(() => Strings.EmissionPower, "_Emission_Power", 0f, 10f),
+            new FloatKnob(() => Strings.Specular, "_Specular", 0f, 1f),
+            new FloatKnob(() => Strings.Metallic, "_Metallic", 0f, 1f)
         };
     }
 
@@ -803,7 +874,7 @@ internal static class SurfaceLook
     {
         return new[]
         {
-            new FloatKnob("Emission power", "_Emission_Power", 0f, 10f)
+            new FloatKnob(() => Strings.EmissionPower, "_Emission_Power", 0f, 10f)
         };
     }
 
@@ -811,9 +882,9 @@ internal static class SurfaceLook
     {
         return new[]
         {
-            new ColorKnob("Stripes", "_Color_Stripes"),
-            new ColorKnob("Stripes additive", "_Color_Stripes_Addective"),
-            new ColorKnob("Shine", "_Color_Shine")
+            new ColorKnob(() => Strings.Stripes, "_Color_Stripes"),
+            new ColorKnob(() => Strings.StripesAdditive, "_Color_Stripes_Addective"),
+            new ColorKnob(() => Strings.Shine, "_Color_Shine")
         };
     }
 
@@ -821,7 +892,7 @@ internal static class SurfaceLook
     {
         return new[]
         {
-            new FloatKnob("Shine intensity", "_Shine_Intensity", 0f, 4f)
+            new FloatKnob(() => Strings.ShineIntensity, "_Shine_Intensity", 0f, 4f)
         };
     }
 

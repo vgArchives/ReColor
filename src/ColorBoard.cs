@@ -1,9 +1,12 @@
 using System.Collections.Generic;
+using HarmonyLib;
+using Restory.Gameplay.GameSettings.Observers;
 using TMPro;
 using UnityEngine;
 
 namespace ReColor;
 
+[HarmonyPatch]
 internal static class ColorBoard
 {
     internal static KeyCode ToggleKey = KeyCode.F11;
@@ -29,6 +32,7 @@ internal static class ColorBoard
 
     private static readonly List<SliderRow> Rows = new List<SliderRow>();
     private static readonly List<LookPreset> Presets = new List<LookPreset>();
+    private static readonly List<DropdownRow> TopBand = new List<DropdownRow>();
 
     private static int _surface;
     private static int _presetSurface;
@@ -86,12 +90,53 @@ internal static class ColorBoard
         Log.Debug($"ReColor board {(shouldOpen ? "open" : "closed")}.");
     }
 
+    internal static void Open()
+    {
+        if (_board == null && !TryBuild())
+            return;
+
+        if (_board.activeSelf)
+            return;
+
+        Toggle();
+    }
+
     internal static void Close()
     {
         if (_board != null && _board.activeSelf)
         {
             _board.SetActive(false);
         }
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(GameSettingsLanguageChangeObserver),
+        nameof(GameSettingsLanguageChangeObserver.Initialize))]
+    private static void HookLanguageChanges(GameSettingsLanguageChangeObserver __instance)
+    {
+        __instance.AddSubscriber(typeof(ColorBoard), HandleLanguageChanged);
+        HandleLanguageChanged(__instance.Localization);
+    }
+
+    private static void HandleLanguageChanged(SystemLanguage language)
+    {
+        Strings.SetLanguage(language);
+
+        if (_board == null)
+            return;
+
+        BoardParts.RetranslateTabs();
+
+        _surfaceDropdown?.SetCaption(Strings.SurfaceStyle);
+        _modeDropdown?.SetCaption(Strings.BaseTexture);
+        _targetDropdown?.SetCaption(Strings.Colour);
+        _presetDropdown?.SetCaption(Strings.SurfaceStyle);
+
+        _surfaceDropdown?.SetOptions(SurfaceNames());
+        _presetDropdown?.SetOptions(SurfaceNames());
+        _presetDropdown?.SetValue(Mathf.Max(0, SurfaceOrder.IndexOf(_presetSurface)));
+
+        RebuildForSurface();
     }
 
     private static bool TryBuild()
@@ -120,34 +165,49 @@ internal static class ColorBoard
 
     private static void BuildDropdowns(BoardParts.Panel panel)
     {
+        _presetDropdown = null;
+
         _surfaceDropdown = panel.CloneDropdownSlot("Surface", 0, 2);
         _modeDropdown = panel.CloneDropdownSlot("ColourMode", 1, 2);
         _targetDropdown = panel.CloneDropdownSlot("ColourTarget", 2, 3);
 
+        TopBand.Clear();
+        TopBand.Add(_surfaceDropdown);
+        TopBand.Add(_modeDropdown);
+        TopBand.Add(_targetDropdown);
+
         if (_surfaceDropdown != null)
         {
-            _surfaceDropdown.SetCaption("Surface style");
+            _surfaceDropdown.SetCaption(Strings.SurfaceStyle);
             _surfaceDropdown.SetOptions(SurfaceNames());
             _surfaceDropdown.OnChanged = ResolveSurfaceChosen;
         }
 
         if (_modeDropdown != null)
         {
-            _modeDropdown.SetCaption("Base texture");
+            _modeDropdown.SetCaption(Strings.BaseTexture);
             _modeDropdown.OnChanged = ResolveModeChosen;
         }
 
         if (_targetDropdown != null)
         {
-            _targetDropdown.SetCaption("Colour");
+            _targetDropdown.SetCaption(Strings.Colour);
             _targetDropdown.OnChanged = ResolveTargetChosen;
         }
 
         _captionLook = _surfaceDropdown?.BarText;
 
-        _surfaceDropdown?.SetCaptionLook(_captionLook);
-        _modeDropdown?.SetCaptionLook(_captionLook);
-        _targetDropdown?.SetCaptionLook(_captionLook);
+        ApplyCaptionLook();
+    }
+
+    private static void ApplyCaptionLook()
+    {
+        foreach (DropdownRow dropdown in TopBand)
+        {
+            dropdown?.SetCaptionLook(_captionLook);
+        }
+
+        _presetDropdown?.SetCaptionLook(_captionLook);
     }
 
     private static void BuildSliderRows(BoardParts.Panel panel)
@@ -161,8 +221,8 @@ internal static class ColorBoard
             if (row == null)
                 continue;
 
-            int captured = Rows.Count;
-            row.OnChanged = value => ResolveRowChanged(captured, value);
+            int rowIndex = Rows.Count;
+            row.OnChanged = value => ResolveRowChanged(rowIndex, value);
 
             Rows.Add(row);
         }
@@ -170,9 +230,9 @@ internal static class ColorBoard
 
     private static void LayOutRows(int rowCount)
     {
-        int perColumn = BoardParts.RowsPerColumn;
-        float top = BoardParts.RowsTop(Mathf.Min(rowCount, perColumn));
-        float pitch = BoardParts.RowPitch();
+        int rowsPerColumn = BoardParts.RowsPerColumn;
+        float rowsTop = BoardParts.RowsTop(Mathf.Min(rowCount, rowsPerColumn));
+        float rowPitch = BoardParts.RowPitch();
 
         for (int index = 0; index < Rows.Count; index++)
         {
@@ -183,10 +243,10 @@ internal static class ColorBoard
             if (!isUsed)
                 continue;
 
-            int column = index / perColumn;
-            int slot = index % perColumn;
+            int column = index / rowsPerColumn;
+            int slot = index % rowsPerColumn;
 
-            Rows[index].Place(BoardParts.SlotCentre(column, Columns), top - pitch * slot);
+            Rows[index].Place(BoardParts.SlotCentre(column, Columns), rowsTop - rowPitch * slot);
         }
     }
 
@@ -203,7 +263,7 @@ internal static class ColorBoard
 
         if (_presetDropdown != null)
         {
-            _presetDropdown.SetCaption("Surface style");
+            _presetDropdown.SetCaption(Strings.SurfaceStyle);
             _presetDropdown.SetCaptionLook(_captionLook);
             _presetDropdown.SetOptions(SurfaceNames());
             _presetDropdown.OnChanged = ResolvePresetSurfaceChosen;
@@ -298,18 +358,10 @@ internal static class ColorBoard
 
         for (int slot = 0; slot < names.Length; slot++)
         {
-            names[slot] = ShortSurfaceName(SurfaceLook.SurfaceName(SurfaceOrder[slot]));
+            names[slot] = BoardPresets.ShortNameOf(SurfaceLook.SurfaceName(SurfaceOrder[slot]));
         }
 
         return names;
-    }
-
-    private static string ShortSurfaceName(string surfaceName)
-    {
-        if (surfaceName == SurfaceLook.NormalRugSurfaceName)
-            return "Normal";
-
-        return surfaceName == SurfaceLook.TournamentSurfaceName ? "Tournament" : surfaceName;
     }
 
     private static void ShowPresets(bool wantsPresets)
@@ -383,9 +435,7 @@ internal static class ColorBoard
 
     private static void ResolvePresetSurfaceChosen(int slot)
     {
-        bool isOutsideSurfaceOrder = slot < 0 || slot >= SurfaceOrder.Count;
-
-        if (_isSyncing || isOutsideSurfaceOrder)
+        if (_isSyncing || IsOutsideSurfaceOrder(slot))
             return;
 
         _presetSurface = SurfaceOrder[slot];
@@ -401,9 +451,7 @@ internal static class ColorBoard
 
     private static void ResolveSurfaceChosen(int slot)
     {
-        bool isOutsideSurfaceOrder = slot < 0 || slot >= SurfaceOrder.Count;
-
-        if (_isSyncing || isOutsideSurfaceOrder)
+        if (_isSyncing || IsOutsideSurfaceOrder(slot))
             return;
 
         _surface = SurfaceOrder[slot];
@@ -411,6 +459,11 @@ internal static class ColorBoard
 
         SurfaceLook.ShowSurface(_surface);
         RebuildForSurface();
+    }
+
+    private static bool IsOutsideSurfaceOrder(int slot)
+    {
+        return slot < 0 || slot >= SurfaceOrder.Count;
     }
 
     private static void ResolveModeChosen(int modeIndex)
@@ -451,6 +504,8 @@ internal static class ColorBoard
     private static void RebuildForSurface()
     {
         _isSyncing = true;
+
+        ApplyCaptionLook();
 
         if (_modeDropdown != null)
         {
@@ -516,19 +571,9 @@ internal static class ColorBoard
     {
         int slots = needsTargets ? 3 : 2;
 
-        if (_surfaceDropdown != null)
+        for (int slot = 0; slot < slots; slot++)
         {
-            _surfaceDropdown.SetSlot(0, slots);
-        }
-
-        if (_modeDropdown != null)
-        {
-            _modeDropdown.SetSlot(1, slots);
-        }
-
-        if (needsTargets && _targetDropdown != null)
-        {
-            _targetDropdown.SetSlot(2, slots);
+            TopBand[slot]?.SetSlot(slot, slots);
         }
     }
 
@@ -571,9 +616,9 @@ internal static class ColorBoard
     private static string ChannelLabel(int channel)
     {
         if (channel == 0)
-            return "Red";
+            return Strings.Red;
 
-        return channel == 1 ? "Green" : "Blue";
+        return channel == 1 ? Strings.Green : Strings.Blue;
     }
 
     private static void ClampSurface()
