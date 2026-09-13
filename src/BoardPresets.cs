@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 namespace ReColor;
@@ -10,6 +11,13 @@ internal static class BoardPresets
         internal int Mode;
         internal int Rgb;
         internal float[] Sliders;
+    }
+
+    private sealed class SurfaceStyle
+    {
+        internal string SurfaceName;
+        internal Func<string> ShortName;
+        internal Preset[] Presets;
     }
 
     private const int Original = 0;
@@ -41,8 +49,8 @@ internal static class BoardPresets
         DefinePreset("Plum", Greyscale, 0x6B4E71, 1.3f),
         DefinePreset("Charcoal", Greyscale, 0x33333A, 1.8f),
         DefinePreset("Terracotta", RugFlat, 0xB5563C, 0.8f),
-        DefinePreset("Cyan panel", RugFlat, 0x00F0FF, 3.5f),
-        DefinePreset("Magenta panel", RugFlat, 0xFF2D95, 3.5f)
+        DefinePreset("Cyan panel", RugFlat, 0x00F0FF, 0.8f),
+        DefinePreset("Magenta panel", RugFlat, 0xFF2D95, 0.8f)
     };
 
     private static readonly Preset[] TournamentRug =
@@ -61,15 +69,25 @@ internal static class BoardPresets
 
     private static readonly Preset[] NoPresets = new Preset[0];
 
+    private static readonly SurfaceStyle[] Styles =
+    {
+        DefineStyle(SurfaceLook.NormalRugSurfaceName, () => Strings.Normal, NormalRug),
+        DefineStyle(SurfaceLook.TournamentSurfaceName, () => Strings.Tournament, TournamentRug),
+        DefineStyle(SurfaceLook.TableSurfaceName, () => Strings.Table, Table)
+    };
+
     internal static Preset[] For(string surfaceName)
     {
-        if (surfaceName == SurfaceLook.NormalRugSurfaceName)
-            return NormalRug;
+        SurfaceStyle style = StyleOf(surfaceName);
 
-        if (surfaceName == SurfaceLook.TournamentSurfaceName)
-            return TournamentRug;
+        return style == null ? NoPresets : style.Presets;
+    }
 
-        return surfaceName == SurfaceLook.TableSurfaceName ? Table : NoPresets;
+    internal static string ShortNameOf(string surfaceName)
+    {
+        SurfaceStyle style = StyleOf(surfaceName);
+
+        return style == null ? surfaceName : style.ShortName();
     }
 
     internal static Color ColorOf(Preset preset)
@@ -81,8 +99,24 @@ internal static class BoardPresets
         return new Color(red, green, blue, 1f);
     }
 
+    private static SurfaceStyle StyleOf(string surfaceName)
+    {
+        foreach (SurfaceStyle style in Styles)
+        {
+            if (style.SurfaceName == surfaceName)
+                return style;
+        }
+
+        return null;
+    }
+
     private static Preset DefinePreset(string name, int mode, int rgb, params float[] sliders)
     {
         return new Preset { Name = name, Mode = mode, Rgb = rgb, Sliders = sliders };
+    }
+
+    private static SurfaceStyle DefineStyle(string surfaceName, Func<string> shortName, Preset[] presets)
+    {
+        return new SurfaceStyle { SurfaceName = surfaceName, ShortName = shortName, Presets = presets };
     }
 }
