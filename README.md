@@ -1,6 +1,6 @@
-# ReColor
+# RestoryReColor
 
-Repaint your ReStory workbench. ReColor lets you paint your store table and switch between normal and tournament style whenever you want.
+Repaint your ReStory workbench. RestoryReColor lets you paint your store table and switch between normal and tournament style whenever you want.
 
 ## Requirements
 
@@ -17,10 +17,10 @@ Repaint your ReStory workbench. ReColor lets you paint your store table and swit
 
 2. Launch the game once, then quit. MelonLoader creates its `Mods` and `UserData` folders on first run.
 
-3. Extract this mod's archive and move `ReColor.dll` into `Mods\`, so it ends up at:
+3. Extract this mod's archive and move `RestoryReColor.dll` into `Mods\`, so it ends up at:
 
    ```
-   ...\Restory\Mods\ReColor.dll
+   ...\Restory\Mods\RestoryReColor.dll
    ```
 
 ## Installation (BepInEx)
@@ -36,10 +36,11 @@ Repaint your ReStory workbench. ReColor lets you paint your store table and swit
 2. Launch the game once from Steam, then quit. BepInEx creates its `plugins` and `config` folders on first
    run.
 
-3. Extract this mod's archive and move the `ReColor` folder into `BepInEx\plugins\`, so the DLL ends up at:
+3. Extract this mod's archive and move the `RestoryReColor` folder into `BepInEx\plugins\`, so the DLL
+   ends up at:
 
    ```
-   ...\Restory\BepInEx\plugins\ReColor\ReColor.dll
+   ...\Restory\BepInEx\plugins\RestoryReColor\RestoryReColor.dll
    ```
 
 ## Controls
@@ -53,11 +54,11 @@ corner closes it.
 
 ## Configuration
 
-BepInEx writes `...\BepInEx\config\com.archives.recolor.cfg` the first time you run the game with the mod
+BepInEx writes `...\BepInEx\config\com.archives.restoryrecolor.cfg` the first time you run the game with the mod
 installed. **Edit it while the game is closed.** The mod reads it once at startup.
 
 On MelonLoader the same settings live in `...\UserData\MelonPreferences.cfg`, shared with your other mods,
-under `[ReColorGeneral]` instead of the section below.
+under `[RestoryReColorGeneral]` instead of the section below.
 
 ### `[General]`
 
@@ -71,7 +72,7 @@ the network.
 ## Building from source
 
 Requires the .NET SDK. The project references the game's own assemblies, so set `GameDir` in
-`ReColor.csproj` to your ReStory install path if it differs from the default.
+`RestoryReColor.csproj` to your ReStory install path if it differs from the default.
 
 ```
 dotnet build                              # Debug   - verbose per-action logging

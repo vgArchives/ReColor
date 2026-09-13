@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-namespace ReColor;
+namespace RestoryReColor;
 
 internal static class Strings
 {

@@ -5,7 +5,7 @@ using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
 
-namespace ReColor;
+namespace RestoryReColor;
 
 [BepInPlugin(PluginGuid, PluginName, PluginVersion)]
 public partial class ReColorPlugin : BaseUnityPlugin

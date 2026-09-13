@@ -3,7 +3,7 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace ReColor;
+namespace RestoryReColor;
 
 internal static class UpdateCheck
 {

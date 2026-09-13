@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
-namespace ReColor;
+namespace RestoryReColor;
 
 internal static class BoardParts
 {

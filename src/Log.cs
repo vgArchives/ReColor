@@ -4,7 +4,7 @@ using MelonLoader;
 using BepInEx.Logging;
 #endif
 
-namespace ReColor;
+namespace RestoryReColor;
 
 internal static class Log
 {

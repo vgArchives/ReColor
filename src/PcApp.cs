@@ -12,16 +12,22 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace ReColor;
+namespace RestoryReColor;
 
 [HarmonyPatch]
 internal static class PcApp
 {
-    private const string AppId = "com.archives.recolor.app";
+    private const string AppId = "com.archives.restoryrecolor.app";
+
+    // Deliberately shorter than PluginName. This is the caption the player reads under the icon on the
+    // in-game PC and in the start menu, where it sits beside names like Outlink Express, so it carries the
+    // mod's own short name rather than the assembly's.
     private const string AppLabel = "ReColor";
+
     private const int AppVersion = 1;
 
-    private const string IconResource = "ReColor.ReColor_Icon.png";
+    // Must stay in step with the LogicalName the csproj embeds the icon under.
+    private const string IconResource = "RestoryReColor.ReColor_Icon.png";
 
     private const float IconScale = 0.85f;
 

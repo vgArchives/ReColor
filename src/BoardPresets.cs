@@ -1,7 +1,7 @@
 using System;
 using UnityEngine;
 
-namespace ReColor;
+namespace RestoryReColor;
 
 internal static class BoardPresets
 {

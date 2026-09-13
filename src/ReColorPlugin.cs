@@ -1,9 +1,9 @@
-namespace ReColor;
+namespace RestoryReColor;
 
 public partial class ReColorPlugin
 {
-    public const string PluginGuid = "com.archives.recolor";
-    internal const string PluginName = "ReColor";
+    public const string PluginGuid = "com.archives.restoryrecolor";
+    internal const string PluginName = "RestoryReColor";
     internal const string PluginVersion = "1.0.0";
     internal const string PluginAuthor = "Archives";
 

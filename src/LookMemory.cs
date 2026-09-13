@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-namespace ReColor;
+namespace RestoryReColor;
 
 internal static class LookMemory
 {
-    private const string FileName = "ReColor.look.json";
+    private const string FileName = "RestoryReColor.look.json";
 
     private static readonly Dictionary<string, float[]> LookBySurface = new Dictionary<string, float[]>();
 

@@ -2,8 +2,8 @@
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
-    <AssemblyName>ReColor</AssemblyName>
-    <RootNamespace>ReColor</RootNamespace>
+    <AssemblyName>RestoryReColor</AssemblyName>
+    <RootNamespace>RestoryReColor</RootNamespace>
     <LangVersion>latest</LangVersion>
     <Version>1.0.0</Version>
     <!-- Unity ships its own facades; don't drag in NuGet reference assemblies. -->
@@ -55,7 +55,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <EmbeddedResource Include="art\ReColor_Icon.png" LogicalName="ReColor.ReColor_Icon.png" />
+    <EmbeddedResource Include="art\ReColor_Icon.png" LogicalName="RestoryReColor.ReColor_Icon.png" />
   </ItemGroup>
 
   <ItemGroup>

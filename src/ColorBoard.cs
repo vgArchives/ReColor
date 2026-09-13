@@ -4,7 +4,7 @@ using Restory.Gameplay.GameSettings.Observers;
 using TMPro;
 using UnityEngine;
 
-namespace ReColor;
+namespace RestoryReColor;
 
 [HarmonyPatch]
 internal static class ColorBoard

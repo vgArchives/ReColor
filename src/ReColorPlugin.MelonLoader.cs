@@ -1,16 +1,16 @@
 #if MELONLOADER
 using MelonLoader;
-using ReColor;
+using RestoryReColor;
 
 [assembly: MelonInfo(typeof(ReColorPlugin), ReColorPlugin.PluginName, ReColorPlugin.PluginVersion,
     ReColorPlugin.PluginAuthor)]
 [assembly: MelonGame("Mandragora", "Restory")]
 
-namespace ReColor;
+namespace RestoryReColor;
 
 public partial class ReColorPlugin : MelonMod
 {
-    private const string GeneralSection = "ReColorGeneral";
+    private const string GeneralSection = "RestoryReColorGeneral";
 
     internal static MelonPreferences_Entry<bool> UpdateCheckEnabled;
 

@@ -7,7 +7,7 @@ using Restory.Gameplay.Workplace;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-namespace ReColor;
+namespace RestoryReColor;
 
 [HarmonyPatch]
 internal static class SurfaceLook
