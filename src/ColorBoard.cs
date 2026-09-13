@@ -9,8 +9,6 @@ namespace ReColor;
 [HarmonyPatch]
 internal static class ColorBoard
 {
-    internal static KeyCode ToggleKey = KeyCode.F11;
-
     private const int Columns = 2;
 
     private const int PresetColumns = 5;
@@ -65,31 +63,6 @@ internal static class ColorBoard
         internal float[] State;
     }
 
-    internal static void Tick()
-    {
-        if (Keys.WasPressed(ToggleKey))
-        {
-            Toggle();
-        }
-    }
-
-    internal static void Toggle()
-    {
-        if (_board == null && !TryBuild())
-            return;
-
-        bool shouldOpen = !_board.activeSelf;
-
-        if (shouldOpen)
-        {
-            ClampSurface();
-            RebuildForSurface();
-        }
-
-        _board.SetActive(shouldOpen);
-        Log.Debug($"ReColor board {(shouldOpen ? "open" : "closed")}.");
-    }
-
     internal static void Open()
     {
         if (_board == null && !TryBuild())
@@ -98,7 +71,12 @@ internal static class ColorBoard
         if (_board.activeSelf)
             return;
 
-        Toggle();
+        ClampSurface();
+        RebuildForSurface();
+
+        _board.SetActive(true);
+
+        Log.Debug("ReColor board open.");
     }
 
     internal static void Close()

@@ -44,12 +44,12 @@ Repaint your ReStory workbench. ReColor lets you paint your store table and swit
 
 ## Controls
 
-| Key     | Action                                                 |
-|---------|--------------------------------------------------------|
-| **F11** | Opens and closes the board while you are at the bench. |
+Open the board from the **ReColor** app on the in-game PC. It opens on the bench, with the PC screen
+switched off behind it.
 
 Three buttons run down the left side of the board. Paint opens the editing page, Preset the grid of
-ready-made looks, and Reset returns the selected surface to the game's own values.
+ready-made looks, and Reset returns the selected surface to the game's own values. The cross in the top
+corner closes it.
 
 ## Configuration
 
@@ -57,7 +57,7 @@ BepInEx writes `...\BepInEx\config\com.archives.recolor.cfg` the first time you 
 installed. **Edit it while the game is closed.** The mod reads it once at startup.
 
 On MelonLoader the same settings live in `...\UserData\MelonPreferences.cfg`, shared with your other mods,
-under `[ReColorGeneral]` and `[ReColorHotkeys]` instead of the two sections below.
+under `[ReColorGeneral]` instead of the section below.
 
 ### `[General]`
 
@@ -67,14 +67,6 @@ under `[ReColorGeneral]` and `[ReColorHotkeys]` instead of the two sections belo
 
 The check reads the latest release tag from `api.github.com`. Set it to `false` and the mod never touches
 the network.
-
-### `[Hotkeys]`
-
-Takes any Unity KeyCode name, e.g. `F11`, `G`, `Tab`, `Keypad5`. `None` turns it off.
-
-| Setting    | Default | Description                                              |
-|------------|---------|----------------------------------------------------------|
-| `BoardKey` | `F11`   | Opens the recolour board while you are at the workbench. |
 
 ## Building from source
 

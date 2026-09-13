@@ -4,7 +4,6 @@ using System.IO;
 using BepInEx;
 using BepInEx.Configuration;
 using HarmonyLib;
-using UnityEngine;
 
 namespace ReColor;
 
@@ -12,7 +11,6 @@ namespace ReColor;
 public partial class ReColorPlugin : BaseUnityPlugin
 {
     private const string GeneralSection = "General";
-    private const string HotkeysSection = "Hotkeys";
     private const string SectionSeparator = "# ----------------------------------------------------------------";
 
     internal static ConfigEntry<bool> UpdateCheckEnabled;
@@ -35,15 +33,13 @@ public partial class ReColorPlugin : BaseUnityPlugin
 
     private void Update()
     {
-        HandleHotkeys();
+        Tick();
     }
 
     private void BindConfig()
     {
         UpdateCheckEnabled = Config.Bind(GeneralSection, UpdateCheckName, DefaultUpdateCheck,
             UpdateCheckPurpose);
-
-        ColorBoard.ToggleKey = BindHotkey(BoardKeyName, DefaultBoardKey, BoardKeyPurpose);
     }
 
     private void AddSectionSeparators()
@@ -70,12 +66,5 @@ public partial class ReColorPlugin : BaseUnityPlugin
         }
     }
 
-    private KeyCode BindHotkey(string settingName, KeyCode defaultKey, string purpose)
-    {
-        ConfigEntry<string> entry = Config.Bind(HotkeysSection, settingName, defaultKey.ToString(),
-            HotkeyDescription(purpose));
-
-        return ParseHotkey(settingName, entry.Value, defaultKey);
-    }
 }
 #endif
